@@ -1,8 +1,9 @@
+version: '3.8'
+
 services:
   # Docker socket proxy for security
   docker-socket:
     image: tecnativa/docker-socket-proxy
-    container_name: docker-socket-proxy
     environment:
       - CONTAINERS=1
       - POST=0
@@ -12,8 +13,11 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
   # Main application
-  docker-port-viewer:
-    image: hollowpnt/docker-port-viewer:v0.4
-    container_name: docker-port-viewer
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "3003:80"
+    depends_on:
+      - docker-socket
