@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ChangeEvent } from 'react';
 import {
   Container,
   Typography,
@@ -16,12 +16,17 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import axios from 'axios';
-import { Container as DockerContainer } from './types';
+import { Container as DockerContainer, Port } from './types';
+
+const HOSTNAME_STORAGE_KEY = 'docker-port-viewer-hostname';
 
 const App: React.FC = () => {
   const [containers, setContainers] = useState<DockerContainer[]>([]);
   const [filteredContainers, setFilteredContainers] = useState<DockerContainer[]>([]);
-  const [hostname, setHostname] = useState<string>('localhost');
+  const [hostname, setHostname] = useState<string>(() => {
+    // Initialize hostname from localStorage or default to 'localhost'
+    return localStorage.getItem(HOSTNAME_STORAGE_KEY) || 'localhost';
+  });
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -34,14 +39,20 @@ const App: React.FC = () => {
     if (searchTerm.trim() === '') {
       setFilteredContainers(containers);
     } else {
-      const filtered = containers.filter(container => 
-        container.Names.some(name => 
+      const filtered = containers.filter((container: DockerContainer) => 
+        container.Names.some((name: string) => 
           name.toLowerCase().includes(searchTerm.toLowerCase())
         )
       );
       setFilteredContainers(filtered);
     }
   }, [searchTerm, containers]);
+
+  const handleHostnameChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const newHostname = e.target.value;
+    setHostname(newHostname);
+    localStorage.setItem(HOSTNAME_STORAGE_KEY, newHostname);
+  };
 
   const fetchContainers = async () => {
     try {
@@ -76,14 +87,15 @@ const App: React.FC = () => {
             fullWidth
             label="Hostname"
             value={hostname}
-            onChange={(e) => setHostname(e.target.value)}
+            onChange={handleHostnameChange}
             margin="normal"
+            helperText="Hostname will be saved and persist across container restarts"
           />
           <TextField
             fullWidth
             label="Search Containers"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
             margin="normal"
             InputProps={{
               startAdornment: (
@@ -107,7 +119,7 @@ const App: React.FC = () => {
           </Box>
         ) : (
           <List>
-            {filteredContainers.map((container) => (
+            {filteredContainers.map((container: DockerContainer) => (
               <Card key={container.Id} sx={{ mb: 2 }}>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -121,7 +133,7 @@ const App: React.FC = () => {
                   </Typography>
                   
                   <List dense>
-                    {container.Ports.map((port, index) => (
+                    {container.Ports.map((port: Port, index: number) => (
                       <ListItem key={index}>
                         <ListItemText
                           primary={
