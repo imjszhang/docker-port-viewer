@@ -13,12 +13,21 @@ import {
   CircularProgress,
   Alert,
   InputAdornment,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  SelectChangeEvent,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import SortIcon from '@mui/icons-material/Sort';
 import axios from 'axios';
 import { Container as DockerContainer, Port } from './types';
 
 const HOSTNAME_STORAGE_KEY = 'docker-port-viewer-hostname';
+const SORT_OPTION_STORAGE_KEY = 'docker-port-viewer-sort-option';
+
+type SortOption = 'name-asc' | 'name-desc' | 'created-asc' | 'created-desc';
 
 const App: React.FC = () => {
   const [containers, setContainers] = useState<DockerContainer[]>([]);
@@ -28,6 +37,9 @@ const App: React.FC = () => {
     return localStorage.getItem(HOSTNAME_STORAGE_KEY) || 'localhost';
   });
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [sortOption, setSortOption] = useState<SortOption>(() => {
+    return (localStorage.getItem(SORT_OPTION_STORAGE_KEY) as SortOption) || 'name-asc';
+  });
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,22 +48,46 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setFilteredContainers(containers);
-    } else {
-      const filtered = containers.filter((container: DockerContainer) => 
+    let filtered = containers;
+    
+    // Apply search filter
+    if (searchTerm.trim() !== '') {
+      filtered = containers.filter((container: DockerContainer) => 
         container.Names.some((name: string) => 
           name.toLowerCase().includes(searchTerm.toLowerCase())
         )
       );
-      setFilteredContainers(filtered);
     }
-  }, [searchTerm, containers]);
+
+    // Apply sorting
+    filtered.sort((a: DockerContainer, b: DockerContainer) => {
+      switch (sortOption) {
+        case 'name-asc':
+          return a.Names[0].localeCompare(b.Names[0]);
+        case 'name-desc':
+          return b.Names[0].localeCompare(a.Names[0]);
+        case 'created-asc':
+          return new Date(a.Created).getTime() - new Date(b.Created).getTime();
+        case 'created-desc':
+          return new Date(b.Created).getTime() - new Date(a.Created).getTime();
+        default:
+          return 0;
+      }
+    });
+
+    setFilteredContainers(filtered);
+  }, [searchTerm, containers, sortOption]);
 
   const handleHostnameChange = (e: ChangeEvent<HTMLInputElement>) => {
     const newHostname = e.target.value;
     setHostname(newHostname);
     localStorage.setItem(HOSTNAME_STORAGE_KEY, newHostname);
+  };
+
+  const handleSortChange = (e: SelectChangeEvent<SortOption>) => {
+    const newSortOption = e.target.value as SortOption;
+    setSortOption(newSortOption);
+    localStorage.setItem(SORT_OPTION_STORAGE_KEY, newSortOption);
   };
 
   const fetchContainers = async () => {
@@ -105,6 +141,24 @@ const App: React.FC = () => {
               ),
             }}
           />
+          <FormControl fullWidth margin="normal">
+            <InputLabel>Sort By</InputLabel>
+            <Select
+              value={sortOption}
+              onChange={handleSortChange}
+              label="Sort By"
+              startAdornment={
+                <InputAdornment position="start">
+                  <SortIcon />
+                </InputAdornment>
+              }
+            >
+              <MenuItem value="name-asc">Name (A-Z)</MenuItem>
+              <MenuItem value="name-desc">Name (Z-A)</MenuItem>
+              <MenuItem value="created-asc">Created (Oldest First)</MenuItem>
+              <MenuItem value="created-desc">Created (Newest First)</MenuItem>
+            </Select>
+          </FormControl>
         </Box>
 
         {error && (
@@ -130,6 +184,9 @@ const App: React.FC = () => {
                   </Typography>
                   <Typography color="textSecondary" gutterBottom>
                     Status: {container.State}
+                  </Typography>
+                  <Typography color="textSecondary" variant="caption" display="block">
+                    Created: {new Date(container.Created).toLocaleString()}
                   </Typography>
                   
                   <List dense>

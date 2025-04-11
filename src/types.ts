@@ -17,4 +17,5 @@ export interface Container {
   State: string;
   Status: string;
   Ports: Port[];
+  Created: string;
 } 
