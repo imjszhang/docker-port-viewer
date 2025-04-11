@@ -12,19 +12,36 @@ import {
   Link,
   CircularProgress,
   Alert,
+  InputAdornment,
 } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
 import axios from 'axios';
 import { Container as DockerContainer } from './types';
 
 const App: React.FC = () => {
   const [containers, setContainers] = useState<DockerContainer[]>([]);
+  const [filteredContainers, setFilteredContainers] = useState<DockerContainer[]>([]);
   const [hostname, setHostname] = useState<string>('localhost');
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchContainers();
   }, []);
+
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredContainers(containers);
+    } else {
+      const filtered = containers.filter(container => 
+        container.Names.some(name => 
+          name.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      );
+      setFilteredContainers(filtered);
+    }
+  }, [searchTerm, containers]);
 
   const fetchContainers = async () => {
     try {
@@ -34,6 +51,7 @@ const App: React.FC = () => {
         socketPath: '/var/run/docker.sock'
       });
       setContainers(response.data);
+      setFilteredContainers(response.data);
     } catch (err) {
       setError('Failed to fetch container information. Make sure the Docker socket is accessible.');
       console.error('Error fetching containers:', err);
@@ -53,13 +71,29 @@ const App: React.FC = () => {
           Docker Port Viewer
         </Typography>
         
-        <TextField
-          fullWidth
-          label="Hostname"
-          value={hostname}
-          onChange={(e) => setHostname(e.target.value)}
-          margin="normal"
-        />
+        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+          <TextField
+            fullWidth
+            label="Hostname"
+            value={hostname}
+            onChange={(e) => setHostname(e.target.value)}
+            margin="normal"
+          />
+          <TextField
+            fullWidth
+            label="Search Containers"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            margin="normal"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+        </Box>
 
         {error && (
           <Alert severity="error" sx={{ my: 2 }}>
@@ -73,7 +107,7 @@ const App: React.FC = () => {
           </Box>
         ) : (
           <List>
-            {containers.map((container) => (
+            {filteredContainers.map((container) => (
               <Card key={container.Id} sx={{ mb: 2 }}>
                 <CardContent>
                   <Typography variant="h6" gutterBottom>
@@ -111,6 +145,11 @@ const App: React.FC = () => {
                 </CardContent>
               </Card>
             ))}
+            {filteredContainers.length === 0 && searchTerm && (
+              <Alert severity="info">
+                No containers found matching "{searchTerm}"
+              </Alert>
+            )}
           </List>
         )}
       </Box>
