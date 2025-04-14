@@ -18,6 +18,7 @@ import {
   FormControl,
   InputLabel,
   SelectChangeEvent,
+  Grid,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import SortIcon from '@mui/icons-material/Sort';
@@ -112,54 +113,59 @@ const App: React.FC = () => {
   };
 
   return (
-    <Container maxWidth="md">
-      <Box sx={{ my: 4 }}>
+    <Container maxWidth="xl" sx={{ py: 2 }}>
+      <Box sx={{ mb: 3 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Docker Port Viewer
         </Typography>
         
-        <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
-          <TextField
-            fullWidth
-            label="Hostname"
-            value={hostname}
-            onChange={handleHostnameChange}
-            margin="normal"
-            helperText="Hostname will be saved and persist across container restarts"
-          />
-          <TextField
-            fullWidth
-            label="Search Containers"
-            value={searchTerm}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-            margin="normal"
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-          />
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Sort By</InputLabel>
-            <Select
-              value={sortOption}
-              onChange={handleSortChange}
-              label="Sort By"
-              startAdornment={
-                <InputAdornment position="start">
-                  <SortIcon />
-                </InputAdornment>
-              }
-            >
-              <MenuItem value="name-asc">Name (A-Z)</MenuItem>
-              <MenuItem value="name-desc">Name (Z-A)</MenuItem>
-              <MenuItem value="created-asc">Created (Oldest First)</MenuItem>
-              <MenuItem value="created-desc">Created (Newest First)</MenuItem>
-            </Select>
-          </FormControl>
-        </Box>
+        <Grid container spacing={2} sx={{ mb: 2 }}>
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              label="Hostname"
+              value={hostname}
+              onChange={handleHostnameChange}
+              size="small"
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField
+              fullWidth
+              label="Search Containers"
+              value={searchTerm}
+              onChange={(e: ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+              size="small"
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Sort By</InputLabel>
+              <Select
+                value={sortOption}
+                onChange={handleSortChange}
+                label="Sort By"
+                startAdornment={
+                  <InputAdornment position="start">
+                    <SortIcon />
+                  </InputAdornment>
+                }
+              >
+                <MenuItem value="name-asc">Name (A-Z)</MenuItem>
+                <MenuItem value="name-desc">Name (Z-A)</MenuItem>
+                <MenuItem value="created-asc">Created (Oldest First)</MenuItem>
+                <MenuItem value="created-desc">Created (Newest First)</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
 
         {error && (
           <Alert severity="error" sx={{ my: 2 }}>
@@ -172,54 +178,80 @@ const App: React.FC = () => {
             <CircularProgress />
           </Box>
         ) : (
-          <List>
+          <Grid container spacing={2} sx={{ width: '100%', margin: 0 }}>
             {filteredContainers.map((container: DockerContainer) => (
-              <Card key={container.Id} sx={{ mb: 2 }}>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    {container.Names[0].replace(/^\//, '')}
-                  </Typography>
-                  <Typography color="textSecondary" gutterBottom>
-                    {container.Image}
-                  </Typography>
-                  <Typography color="textSecondary" gutterBottom>
-                    Status: {container.State}
-                  </Typography>
-                  <Typography color="textSecondary" variant="caption" display="block">
-                    Created: {new Date(container.Created).toLocaleString()}
-                  </Typography>
-                  
-                  <List dense>
-                    {container.Ports.map((port: Port, index: number) => (
-                      <ListItem key={index}>
-                        <ListItemText
-                          primary={
-                            port.PublicPort ? (
-                              <Link
-                                href={generateLink(port.PublicPort)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                              >
-                                {generateLink(port.PublicPort)}
-                              </Link>
-                            ) : (
-                              `Private Port: ${port.PrivatePort}`
-                            )
-                          }
-                          secondary={`${port.Type} - Internal Port: ${port.PrivatePort}`}
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                </CardContent>
-              </Card>
+              <Grid item xs={12} sm={6} md={4} lg={3} key={container.Id} sx={{ display: 'flex' }}>
+                <Card sx={{ 
+                  width: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  transition: 'transform 0.2s',
+                  '&:hover': {
+                    transform: 'scale(1.02)',
+                    boxShadow: 3,
+                  }
+                }}>
+                  <CardContent sx={{ 
+                    flexGrow: 1,
+                    p: 2,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 1
+                  }}>
+                    <Typography variant="subtitle1" noWrap gutterBottom>
+                      {container.Names[0].replace(/^\//, '')}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary" noWrap gutterBottom>
+                      {container.Image}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary" gutterBottom>
+                      Status: {container.State}
+                    </Typography>
+                    <Typography variant="caption" color="textSecondary" display="block" gutterBottom>
+                      Created: {new Date(container.Created).toLocaleString()}
+                    </Typography>
+                    
+                    <List dense sx={{ mt: 'auto' }}>
+                      {container.Ports.map((port: Port, index: number) => (
+                        <ListItem key={index} sx={{ py: 0.5 }}>
+                          <ListItemText
+                            primary={
+                              port.PublicPort ? (
+                                <Link
+                                  href={generateLink(port.PublicPort)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  sx={{ fontSize: '0.875rem' }}
+                                >
+                                  {generateLink(port.PublicPort)}
+                                </Link>
+                              ) : (
+                                <Typography variant="body2">
+                                  Private Port: {port.PrivatePort}
+                                </Typography>
+                              )
+                            }
+                            secondary={
+                              <Typography variant="caption" color="textSecondary">
+                                {port.Type} - Internal Port: {port.PrivatePort}
+                              </Typography>
+                            }
+                          />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </CardContent>
+                </Card>
+              </Grid>
             ))}
             {filteredContainers.length === 0 && searchTerm && (
-              <Alert severity="info">
-                No containers found matching "{searchTerm}"
-              </Alert>
+              <Grid item xs={12}>
+                <Alert severity="info">
+                  No containers found matching "{searchTerm}"
+                </Alert>
+              </Grid>
             )}
-          </List>
+          </Grid>
         )}
       </Box>
     </Container>
