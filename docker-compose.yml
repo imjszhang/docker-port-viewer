@@ -13,7 +13,7 @@ services:
 
   # Main application
   docker-port-viewer:
-    image: hollowpnt/docker-port-viewer:v0.4
+    image: hollowpnt/docker-port-viewer:latest
     container_name: docker-port-viewer
     ports:
       - "3003:80"
