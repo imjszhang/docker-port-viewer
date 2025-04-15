@@ -4,8 +4,7 @@ Simple typescript application to view your currently running containers as well 
 
 Relies on a docker-socket-proxy to get container information.
 
-![image](https://github.com/user-attachments/assets/7c2af43f-a533-4292-be6d-3afeb8458539)
-
+![image](https://github.com/user-attachments/assets/0c331919-3cc7-4ef0-91b4-5f80fd9adb6e)
 
 ## Image
 
