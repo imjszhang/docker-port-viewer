@@ -19,9 +19,18 @@ import {
   InputLabel,
   SelectChangeEvent,
   Grid,
+  Paper,
+  IconButton,
+  Menu,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import SortIcon from '@mui/icons-material/Sort';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import WebIcon from '@mui/icons-material/Web';
 import axios from 'axios';
 import { Container as DockerContainer, Port } from './types';
 
@@ -34,7 +43,6 @@ const App: React.FC = () => {
   const [containers, setContainers] = useState<DockerContainer[]>([]);
   const [filteredContainers, setFilteredContainers] = useState<DockerContainer[]>([]);
   const [hostname, setHostname] = useState<string>(() => {
-    // Initialize hostname from localStorage or default to 'localhost'
     return localStorage.getItem(HOSTNAME_STORAGE_KEY) || 'localhost';
   });
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -43,6 +51,12 @@ const App: React.FC = () => {
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentUrl, setCurrentUrl] = useState<string | null>(null);
+  const [iframeKey, setIframeKey] = useState<number>(0);
+  const [iframeHistory, setIframeHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState<number>(-1);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedUrl, setSelectedUrl] = useState<string | null>(null);
 
   useEffect(() => {
     fetchContainers();
@@ -51,7 +65,6 @@ const App: React.FC = () => {
   useEffect(() => {
     let filtered = containers;
     
-    // Apply search filter
     if (searchTerm.trim() !== '') {
       filtered = containers.filter((container: DockerContainer) => 
         container.Names.some((name: string) => 
@@ -60,7 +73,6 @@ const App: React.FC = () => {
       );
     }
 
-    // Apply sorting
     filtered.sort((a: DockerContainer, b: DockerContainer) => {
       switch (sortOption) {
         case 'name-asc':
@@ -98,7 +110,6 @@ const App: React.FC = () => {
       const response = await axios.get('/v1.41/containers/json', {
         socketPath: '/var/run/docker.sock'
       });
-      console.log('Container data:', response.data[0]); // Log first container for inspection
       setContainers(response.data);
       setFilteredContainers(response.data);
     } catch (err) {
@@ -113,9 +124,63 @@ const App: React.FC = () => {
     return `http://${hostname}:${port}`;
   };
 
+  const handleLinkClick = (e: React.MouseEvent, url: string) => {
+    e.preventDefault();
+    setCurrentUrl(url);
+    setIframeKey(prev => prev + 1);
+    setIframeHistory(prev => [...prev.slice(0, historyIndex + 1), url]);
+    setHistoryIndex(prev => prev + 1);
+  };
+
+  const handleBack = () => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setCurrentUrl(iframeHistory[newIndex]);
+      setIframeKey(prev => prev + 1);
+    }
+  };
+
+  const handleForward = () => {
+    if (historyIndex < iframeHistory.length - 1) {
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      setCurrentUrl(iframeHistory[newIndex]);
+      setIframeKey(prev => prev + 1);
+    }
+  };
+
+  const handleRefresh = () => {
+    setIframeKey(prev => prev + 1);
+  };
+
+  const handleMenuClick = (event: React.MouseEvent<HTMLElement>, url: string) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedUrl(url);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedUrl(null);
+  };
+
+  const handleOpenInIframe = () => {
+    if (selectedUrl) {
+      handleLinkClick(new MouseEvent('click') as any, selectedUrl);
+    }
+    handleMenuClose();
+  };
+
+  const handleOpenInNewTab = () => {
+    if (selectedUrl) {
+      window.open(selectedUrl, '_blank', 'noopener,noreferrer');
+    }
+    handleMenuClose();
+  };
+
   return (
-    <Container maxWidth="xl" sx={{ py: 2 }}>
-      <Box sx={{ mb: 3 }}>
+    <Container maxWidth={false} sx={{ py: 2, height: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{ mb: 2 }}>
         <Typography variant="h4" component="h1" gutterBottom>
           Docker Port Viewer
         </Typography>
@@ -173,88 +238,202 @@ const App: React.FC = () => {
             {error}
           </Alert>
         )}
-
-        {loading ? (
-          <Box display="flex" justifyContent="center" my={4}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <Grid container spacing={2} sx={{ width: '100%', margin: 0 }}>
-            {filteredContainers.map((container: DockerContainer) => (
-              <Grid item xs={12} sm={6} md={4} lg={3} key={container.Id} sx={{ display: 'flex' }}>
-                <Card sx={{ 
-                  width: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  transition: 'transform 0.2s',
-                  '&:hover': {
-                    transform: 'scale(1.02)',
-                    boxShadow: 3,
-                  }
-                }}>
-                  <CardContent sx={{ 
-                    flexGrow: 1,
-                    p: 2,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 1
-                  }}>
-                    <Typography variant="subtitle1" noWrap gutterBottom>
-                      {container.Names[0].replace(/^\//, '')}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary" noWrap gutterBottom>
-                      {container.Image}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary" gutterBottom>
-                      Status: {container.State}
-                    </Typography>
-                    <Typography variant="caption" color="textSecondary" display="block" gutterBottom>
-                      Started: {container.State === 'running' ? new Date(Number(container.Created) * 1000).toLocaleString() : 'Not started'}
-                    </Typography>
-                    
-                    <List dense sx={{ mt: 'auto' }}>
-                      {container.Ports.map((port: Port, index: number) => (
-                        <ListItem key={index} sx={{ py: 0.5 }}>
-                          <ListItemText
-                            primary={
-                              port.PublicPort ? (
-                                <Link
-                                  href={generateLink(port.PublicPort)}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  sx={{ fontSize: '0.875rem' }}
-                                >
-                                  {generateLink(port.PublicPort)}
-                                </Link>
-                              ) : (
-                                <Typography variant="body2">
-                                  Private Port: {port.PrivatePort}
-                                </Typography>
-                              )
-                            }
-                            secondary={
-                              <Typography variant="caption" color="textSecondary">
-                                {port.Type} - Internal Port: {port.PrivatePort}
-                              </Typography>
-                            }
-                          />
-                        </ListItem>
-                      ))}
-                    </List>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-            {filteredContainers.length === 0 && searchTerm && (
-              <Grid item xs={12}>
-                <Alert severity="info">
-                  No containers found matching "{searchTerm}"
-                </Alert>
-              </Grid>
-            )}
-          </Grid>
-        )}
       </Box>
+
+      <Box sx={{ display: 'flex', flex: 1, gap: 2, overflow: 'hidden' }}>
+        {/* Left Column - Container List */}
+        <Paper 
+          elevation={3} 
+          sx={{ 
+            flex: '0 0 400px', 
+            overflow: 'auto',
+            display: 'flex',
+            flexDirection: 'column'
+          }}
+        >
+          {loading ? (
+            <Box display="flex" justifyContent="center" my={4}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <List sx={{ flex: 1, overflow: 'auto' }}>
+              {filteredContainers.map((container: DockerContainer) => (
+                <ListItem 
+                  key={container.Id} 
+                  sx={{ 
+                    borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
+                    '&:hover': {
+                      backgroundColor: 'action.hover',
+                    }
+                  }}
+                >
+                  <ListItemText
+                    primary={
+                      <Typography variant="subtitle1" noWrap>
+                        {container.Names[0].replace(/^\//, '')}
+                      </Typography>
+                    }
+                    secondary={
+                      <Box>
+                        <Typography variant="body2" color="textSecondary" noWrap>
+                          {container.Image}
+                        </Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          Status: {container.State}
+                        </Typography>
+                        <Typography variant="caption" color="textSecondary" display="block">
+                          Started: {container.State === 'running' ? new Date(Number(container.Created) * 1000).toLocaleString() : 'Not started'}
+                        </Typography>
+                        <List dense>
+                          {container.Ports
+                            .filter((port, index, self) => 
+                              index === self.findIndex(p => 
+                                p.PublicPort === port.PublicPort && 
+                                p.PrivatePort === port.PrivatePort
+                              )
+                            )
+                            .map((port: Port, index: number) => (
+                            <ListItem key={index} sx={{ py: 0.5 }}>
+                              <ListItemText
+                                primary={
+                                  port.PublicPort ? (
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                      <Link
+                                        href={generateLink(port.PublicPort)}
+                                        onClick={(e) => handleLinkClick(e, generateLink(port.PublicPort))}
+                                        sx={{ fontSize: '0.875rem', flex: 1 }}
+                                      >
+                                        {generateLink(port.PublicPort)}
+                                      </Link>
+                                      <IconButton
+                                        size="small"
+                                        onClick={(e) => handleMenuClick(e, generateLink(port.PublicPort))}
+                                      >
+                                        <MoreVertIcon fontSize="small" />
+                                      </IconButton>
+                                    </Box>
+                                  ) : (
+                                    <Typography variant="body2">
+                                      Private Port: {port.PrivatePort}
+                                    </Typography>
+                                  )
+                                }
+                                secondary={
+                                  <Typography variant="caption" color="textSecondary">
+                                    {port.Type} - Internal Port: {port.PrivatePort}
+                                  </Typography>
+                                }
+                              />
+                            </ListItem>
+                          ))}
+                        </List>
+                      </Box>
+                    }
+                  />
+                </ListItem>
+              ))}
+              {filteredContainers.length === 0 && searchTerm && (
+                <ListItem>
+                  <Alert severity="info">
+                    No containers found matching "{searchTerm}"
+                  </Alert>
+                </ListItem>
+              )}
+            </List>
+          )}
+        </Paper>
+
+        {/* Right Column - Iframe */}
+        <Paper 
+          elevation={3} 
+          sx={{ 
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
+          }}
+        >
+          <Box sx={{ 
+            p: 1, 
+            borderBottom: '1px solid rgba(0, 0, 0, 0.12)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1
+          }}>
+            <IconButton 
+              onClick={handleBack} 
+              disabled={historyIndex <= 0}
+              size="small"
+            >
+              <ArrowBackIcon />
+            </IconButton>
+            <IconButton 
+              onClick={handleForward} 
+              disabled={historyIndex >= iframeHistory.length - 1}
+              size="small"
+            >
+              <ArrowForwardIcon />
+            </IconButton>
+            <IconButton onClick={handleRefresh} size="small">
+              <RefreshIcon />
+            </IconButton>
+            <Typography 
+              variant="body2" 
+              sx={{ 
+                ml: 1,
+                flex: 1,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {currentUrl || 'No URL selected'}
+            </Typography>
+          </Box>
+          
+          {currentUrl ? (
+            <iframe
+              key={iframeKey}
+              src={currentUrl}
+              style={{
+                flex: 1,
+                border: 'none',
+                width: '100%',
+                height: '100%'
+              }}
+              sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+              title="Container Content"
+            />
+          ) : (
+            <Box 
+              sx={{ 
+                flex: 1, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                color: 'text.secondary'
+              }}
+            >
+              <Typography>Select a container port to view its content</Typography>
+            </Box>
+          )}
+        </Paper>
+      </Box>
+
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={handleOpenInIframe}>
+          <WebIcon fontSize="small" sx={{ mr: 1 }} />
+          Open in iframe
+        </MenuItem>
+        <MenuItem onClick={handleOpenInNewTab}>
+          <OpenInNewIcon fontSize="small" sx={{ mr: 1 }} />
+          Open in new tab
+        </MenuItem>
+      </Menu>
     </Container>
   );
 };
