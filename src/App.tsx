@@ -68,9 +68,9 @@ const App: React.FC = () => {
         case 'name-desc':
           return b.Names[0].localeCompare(a.Names[0]);
         case 'created-asc':
-          return Number(a.Created) - Number(b.Created);
-        case 'created-desc':
           return Number(b.Created) - Number(a.Created);
+        case 'created-desc':
+          return Number(a.Created) - Number(b.Created);
         default:
           return 0;
       }
