@@ -18,4 +18,5 @@ export interface Container {
   Status: string;
   Ports: Port[];
   Created: string;
+  StartedAt: string;
 } 

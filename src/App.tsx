@@ -68,9 +68,9 @@ const App: React.FC = () => {
         case 'name-desc':
           return b.Names[0].localeCompare(a.Names[0]);
         case 'created-asc':
-          return new Date(a.Created).getTime() - new Date(b.Created).getTime();
+          return Number(a.Created) - Number(b.Created);
         case 'created-desc':
-          return new Date(b.Created).getTime() - new Date(a.Created).getTime();
+          return Number(b.Created) - Number(a.Created);
         default:
           return 0;
       }
@@ -98,6 +98,7 @@ const App: React.FC = () => {
       const response = await axios.get('/v1.41/containers/json', {
         socketPath: '/var/run/docker.sock'
       });
+      console.log('Container data:', response.data[0]); // Log first container for inspection
       setContainers(response.data);
       setFilteredContainers(response.data);
     } catch (err) {
@@ -208,7 +209,7 @@ const App: React.FC = () => {
                       Status: {container.State}
                     </Typography>
                     <Typography variant="caption" color="textSecondary" display="block" gutterBottom>
-                      Created: {new Date(container.Created).toLocaleString()}
+                      Started: {container.State === 'running' ? new Date(Number(container.Created) * 1000).toLocaleString() : 'Not started'}
                     </Typography>
                     
                     <List dense sx={{ mt: 'auto' }}>
