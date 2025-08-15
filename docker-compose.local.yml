@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  # Docker socket proxy for security
+  docker-socket:
+    image: tecnativa/docker-socket-proxy
+    environment:
+      - CONTAINERS=1
+      - POST=0
+      - PUT=0
+      - DELETE=0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  # Main application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3003:80"
+    depends_on:
+      - docker-socket
